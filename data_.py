@@ -24,12 +24,15 @@ class Sequential(data.Dataset):
 
         if train == 'train':
             self.data = data.iloc[:int(np.floor(len(data) * ratio))]
+            print('data length : ',len(self.data))
         else:
             self.data = data.iloc[int(np.floor(len(data) * ratio)):]
+            print('data length : ', len(self.data))
+
         if norm:
-            min = self.data[x].min()
-            range_ = self.data[x].max() - min
-            self.data[x] = (self.data[x] - min) / range_
+            min_ = self.data[x].min()
+            range_ = self.data[x].max() - min_
+            self.data[x] = (self.data[x] - min_) / range_
         self.data_length = len(self.data)
 
     def __len__(self):
@@ -42,11 +45,13 @@ class Sequential(data.Dataset):
     def __getitem__(self, idx):
         if torch.is_tensor(idx):
             idx = idx.tolist()
-
+        if not self.sliding:    # not sliding window
+            idx = idx * int(self.q)
         if idx + self.q > self.data_length:
             idx_fin = -1
         else:
             idx_fin = idx + self.q
+
         value = self.data.iloc[idx:idx_fin][self.x].values
         label = self.data.iloc[idx:idx_fin][self.y].values
 
@@ -171,8 +176,10 @@ class Yahoo(data.Dataset):
     def __next__(self):
         if self.idx >= self.size:
             raise StopIteration
-        file_root = os.path.join(self.root, self.files[self.idx])
-        print(self.files[self.idx])
+        self.title = self.files[self.idx]
+        file_root = os.path.join(self.root, self.title)
+        print(self.title)
+
         dataset = Sequential(file_root, self.q_size, norm=self.norm, train=self.type, ratio=self.ratio, x='value',
                              y=self.label, sliding=self.sliding)
         dataloader = torch.utils.data.DataLoader(dataset,
